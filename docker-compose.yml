@@ -5,20 +5,10 @@ services:
     build: .
     ports:
       - '3333:3333'
+    env_file:
+      - .env
     environment:
-      TZ: UTC
-      PORT: 3333
-      HOST: 0.0.0.0
-      NODE_ENV: production
-      LOG_LEVEL: info
-      APP_KEY: nDCk8pvFlBodYwXJcSuazX99OU5qRTaL
-      APP_URL: http://localhost:3333
-      SESSION_DRIVER: cookie
       DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: root
-      DB_DATABASE: payment_gateway
     depends_on:
       mysql:
         condition: service_healthy
@@ -34,10 +24,10 @@ services:
     ports:
       - '3306:3306'
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: payment_gateway
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
     healthcheck:
-      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-proot']
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-p${DB_PASSWORD}']
       interval: 5s
       timeout: 5s
       retries: 15
