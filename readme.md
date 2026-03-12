@@ -121,6 +121,8 @@ A API estará disponível em `http://localhost:3333`.
 node ace test
 ```
 
+> Os testes foram desenvolvidos com Japa (framework nativo do AdonisJS), cobrindo autenticação, controle de acesso por roles, validação de dados e operações CRUD, ou seja, os principais fluxos da aplicação.
+
 ---
 
 ## 🛣 Rotas
