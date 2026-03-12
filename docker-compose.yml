@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - '3333:3333'
+    environment:
+      TZ: UTC
+      PORT: 3333
+      HOST: 0.0.0.0
+      NODE_ENV: production
+      LOG_LEVEL: info
+      APP_KEY: nDCk8pvFlBodYwXJcSuazX99OU5qRTaL
+      APP_URL: http://localhost:3333
+      SESSION_DRIVER: cookie
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_DATABASE: payment_gateway
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: on-failure
+    command: >
+      sh -c "node ace migration:run --force &&
+             node ace db:seed --files database/seeders/gateway_seeder.ts &&
+             node ace db:seed --files database/seeders/user_seeder.ts &&
+             node bin/server.js"
+
+  mysql:
+    image: mysql:8.0
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: payment_gateway
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-proot']
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  gateways:
+    image: matheusprotzen/gateways-mock
+    ports:
+      - '3001:3001'
+      - '3002:3002'
+
+volumes:
+  mysql_data:
