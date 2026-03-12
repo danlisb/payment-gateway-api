@@ -13,7 +13,7 @@ API RESTful para gerenciamento de pagamentos multi-gateway desenvolvida com Adon
 ### 1. Clone o repositório
 
 ```bash
-git clone <url-do-repositorio>
+git clone https://github.com/danlisb/payment-gateway-api
 cd payment-gateway-api
 ```
 
