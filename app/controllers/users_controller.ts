@@ -1,4 +1,5 @@
 import User from '#models/user'
+import { createUserValidator, updateUserValidator } from '#validators/user'
 import type { HttpContext } from '@adonisjs/core/http'
 
 export default class UsersController {
@@ -16,7 +17,7 @@ export default class UsersController {
   }
 
   async store({ request, response }: HttpContext) {
-    const data = request.only(['name', 'email', 'password', 'role'])
+    const data = await request.validateUsing(createUserValidator)
     const user = await User.create(data)
     return response.created({ id: user.id, name: user.name, email: user.email, role: user.role })
   }
@@ -24,7 +25,7 @@ export default class UsersController {
   async update({ params, request, response }: HttpContext) {
     const user = await User.find(params.id)
     if (!user) return response.notFound({ message: 'User not found' })
-    const data = request.only(['name', 'email', 'password', 'role'])
+    const data = await request.validateUsing(updateUserValidator)
     user.merge(data)
     await user.save()
     return response.ok({ id: user.id, name: user.name, email: user.email, role: user.role })

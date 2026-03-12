@@ -30,4 +30,22 @@ test.group('Auth', (group) => {
 
     response.assertStatus(401)
   })
+
+  test('should reject login with invalid email format', async ({ client }) => {
+    const response = await client.post('/login').json({
+      email: 'not-an-email',
+      password: 'password123',
+    })
+
+    response.assertStatus(422)
+  })
+
+  test('should reject login with short password', async ({ client }) => {
+    const response = await client.post('/login').json({
+      email: 'test@admin.com',
+      password: '123',
+    })
+
+    response.assertStatus(422)
+  })
 })

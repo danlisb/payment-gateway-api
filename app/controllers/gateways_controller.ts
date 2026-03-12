@@ -1,4 +1,5 @@
 import Gateway from '#models/gateway'
+import { updatePriorityValidator } from '#validators/gateway'
 import type { HttpContext } from '@adonisjs/core/http'
 
 export default class GatewaysController {
@@ -18,7 +19,7 @@ export default class GatewaysController {
   async updatePriority({ params, request, response }: HttpContext) {
     const gateway = await Gateway.find(params.id)
     if (!gateway) return response.notFound({ message: 'Gateway not found' })
-    const { priority } = request.only(['priority'])
+    const { priority } = await request.validateUsing(updatePriorityValidator)
     gateway.priority = priority
     await gateway.save()
     return response.ok(gateway)

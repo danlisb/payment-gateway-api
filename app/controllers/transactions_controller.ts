@@ -3,6 +3,7 @@ import Client from '#models/client'
 import Product from '#models/product'
 import GatewayManager from '#services/gateways/gateway_manager'
 import type { HttpContext } from '@adonisjs/core/http'
+import { createTransactionValidator } from '#validators/transaction'
 
 export default class TransactionsController {
   async index({ response }: HttpContext) {
@@ -26,19 +27,22 @@ export default class TransactionsController {
   }
 
   async store({ request, response }: HttpContext) {
-    const { name, email, cardNumber, cvv, products } = request.only([
-      'name', 'email', 'cardNumber', 'cvv', 'products',
-    ])
+    const { name, email, cardNumber, cvv, products } = await request.validateUsing(
+      createTransactionValidator
+    )
 
     // products: [{ id: 1, quantity: 2 }, ...]
-    const productRecords = await Product.query().whereIn('id', products.map((p: any) => p.id))
+    const productRecords = await Product.query().whereIn(
+      'id',
+      products.map((p: any) => p.id)
+    )
     if (productRecords.length !== products.length) {
       return response.unprocessableEntity({ message: 'One or more products not found' })
     }
 
     const amount = productRecords.reduce((total: number, product: Product) => {
-      const item = products.find((p: any) => p.id === product.id)
-      return total + product.amount * item.quantity
+      const item = products.find((p) => p.id === product.id)
+      return total + product.amount * (item?.quantity ?? 1)
     }, 0)
 
     let client = await Client.findBy('email', email)
@@ -64,9 +68,9 @@ export default class TransactionsController {
       cardLastNumbers: result.cardLastNumbers,
     })
 
-    await transaction.related('products').attach(
-      Object.fromEntries(products.map((p: any) => [p.id, { quantity: p.quantity }]))
-    )
+    await transaction
+      .related('products')
+      .attach(Object.fromEntries(products.map((p: any) => [p.id, { quantity: p.quantity }])))
 
     await transaction.load('products')
     await transaction.load('gateway')
@@ -75,10 +79,7 @@ export default class TransactionsController {
   }
 
   async refund({ params, response }: HttpContext) {
-    const transaction = await Transaction.query()
-      .where('id', params.id)
-      .preload('gateway')
-      .first()
+    const transaction = await Transaction.query().where('id', params.id).preload('gateway').first()
 
     if (!transaction) return response.notFound({ message: 'Transaction not found' })
     if (transaction.status === 'refunded') {
