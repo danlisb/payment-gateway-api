@@ -247,5 +247,26 @@ Para adicionar um novo gateway:
 
 - Senhas armazenadas com hash via `scrypt`
 - Autenticação via Access Tokens (Bearer)
-- Controle de acesso por roles (`admin` / `user`)
 - Dados sensíveis de cartão: apenas os 4 últimos dígitos são armazenados
+- Validação de dados em todas as rotas com VineJS
+
+## 👥 Roles
+
+| Role | Permissões |
+|------|-----------|
+| `admin` | Acesso total |
+| `manager` | Gerencia usuários e produtos |
+| `finance` | Gerencia produtos e realiza reembolsos |
+| `user` | Leitura geral (clientes, produtos, transações) |
+
+### Detalhamento por rota
+
+| Rota | admin | manager | finance | user |
+|------|-------|---------|---------|------|
+| CRUD usuários | ✅ | ✅ | ❌ | ❌ |
+| DELETE usuário | ✅ | ❌ | ❌ | ❌ |
+| CRUD produtos | ✅ | ✅ | ✅ | ❌ |
+| Ativar/desativar gateway | ✅ | ❌ | ❌ | ❌ |
+| Alterar prioridade gateway | ✅ | ❌ | ❌ | ❌ |
+| Reembolso | ✅ | ❌ | ✅ | ❌ |
+| Listar clientes/transações | ✅ | ✅ | ✅ | ✅ |
