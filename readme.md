@@ -31,14 +31,23 @@ Copie o arquivo de exemplo e ajuste se necessário:
 cp .env.example .env
 ```
 
-Valores padrão do `.env`:
+Gere uma nova `APP_KEY`:
+
+```bash
+node ace generate:key
+```
+
+Valores do `.env`:
 
 ```env
 TZ=UTC
 PORT=3333
 HOST=localhost
 NODE_ENV=development
+LOG_LEVEL=info
 APP_KEY=sua_chave_aqui
+APP_URL=http://localhost:3333
+SESSION_DRIVER=cookie
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_USER=root
@@ -90,11 +99,29 @@ email: admin@admin.com
 senha: admin123
 ```
 
+---
+
+## 🐳 Rodando com Docker Compose
+
+Para subir toda a aplicação (API + MySQL + Gateways) com um único comando:
+
+```bash
+docker compose up
+```
+
+A API estará disponível em `http://localhost:3333`.
+
+> As migrations e seeders são executados automaticamente na inicialização.
+
+---
+
 ## 🧪 Rodando os testes
 
 ```bash
 node ace test
 ```
+
+---
 
 ## 🛣 Rotas
 
@@ -128,6 +155,8 @@ POST /purchases
 }
 ```
 
+> O valor total é calculado automaticamente pelo back-end com base nos produtos e quantidades informados.
+
 ---
 
 ### Rotas Privadas
@@ -141,15 +170,15 @@ POST /purchases
 |--------|------|-----------|
 | DELETE | `/logout` | Encerrar sessão |
 
-#### Usuários *(somente admin)*
+#### Usuários *(admin e manager)*
 
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| GET | `/users` | Listar usuários |
-| GET | `/users/:id` | Detalhe do usuário |
-| POST | `/users` | Criar usuário |
-| PUT | `/users/:id` | Atualizar usuário |
-| DELETE | `/users/:id` | Remover usuário |
+| Método | Rota | Descrição | Role |
+|--------|------|-----------|------|
+| GET | `/users` | Listar usuários | admin, manager |
+| GET | `/users/:id` | Detalhe do usuário | admin, manager |
+| POST | `/users` | Criar usuário | admin, manager |
+| PUT | `/users/:id` | Atualizar usuário | admin, manager |
+| DELETE | `/users/:id` | Remover usuário | admin |
 
 ```json
 POST /users
@@ -161,9 +190,9 @@ POST /users
 }
 ```
 
-> `role` aceita: `admin` ou `user`
+> `role` aceita: `admin`, `manager`, `finance` ou `user`
 
-#### Gateways
+#### Gateways *(somente admin)*
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
@@ -184,9 +213,9 @@ PATCH /gateways/1/priority
 |--------|------|-----------|------|
 | GET | `/products` | Listar produtos | qualquer |
 | GET | `/products/:id` | Detalhe do produto | qualquer |
-| POST | `/products` | Criar produto | admin |
-| PUT | `/products/:id` | Atualizar produto | admin |
-| DELETE | `/products/:id` | Remover produto | admin |
+| POST | `/products` | Criar produto | admin, manager, finance |
+| PUT | `/products/:id` | Atualizar produto | admin, manager, finance |
+| DELETE | `/products/:id` | Remover produto | admin, manager, finance |
 
 ```json
 POST /products
@@ -211,7 +240,9 @@ POST /products
 |--------|------|-----------|------|
 | GET | `/transactions` | Listar transações | qualquer |
 | GET | `/transactions/:id` | Detalhe da transação | qualquer |
-| POST | `/transactions/:id/refund` | Realizar reembolso | admin |
+| POST | `/transactions/:id/refund` | Realizar reembolso | admin, finance |
+
+---
 
 ## 🏗 Arquitetura
 
@@ -220,6 +251,7 @@ app/
 ├── controllers/        # Controladores das rotas
 ├── middleware/         # Middlewares (auth, adminOnly)
 ├── models/             # Models Lucid ORM
+├── validators/         # Validação de dados com VineJS
 └── services/
     └── gateways/       # Serviço multi-gateway
         ├── gateway_interface.ts   # Contrato base
@@ -233,6 +265,8 @@ tests/
 └── functional/         # Testes funcionais com Japa
 ```
 
+---
+
 ## 🔌 Multi-Gateway
 
 O sistema tenta processar pagamentos seguindo a ordem de prioridade dos gateways ativos. Se o gateway de maior prioridade falhar, tenta automaticamente o próximo.
@@ -243,16 +277,11 @@ Para adicionar um novo gateway:
 2. Registre no `switch` do `gateway_manager.ts`
 3. Insira o registro no banco via seeder
 
-## 🔒 Segurança
-
-- Senhas armazenadas com hash via `scrypt`
-- Autenticação via Access Tokens (Bearer)
-- Dados sensíveis de cartão: apenas os 4 últimos dígitos são armazenados
-- Validação de dados em todas as rotas com VineJS
+---
 
 ## 👥 Roles
 
-| Role | Permissões |
+| Role | Descrição |
 |------|-----------|
 | `admin` | Acesso total |
 | `manager` | Gerencia usuários e produtos |
@@ -263,10 +292,20 @@ Para adicionar um novo gateway:
 
 | Rota | admin | manager | finance | user |
 |------|-------|---------|---------|------|
-| CRUD usuários | ✅ | ✅ | ❌ | ❌ |
-| DELETE usuário | ✅ | ❌ | ❌ | ❌ |
-| CRUD produtos | ✅ | ✅ | ✅ | ❌ |
+| Listar/detalhar usuários | ✅ | ✅ | ❌ | ❌ |
+| Criar/atualizar usuários | ✅ | ✅ | ❌ | ❌ |
+| Deletar usuários | ✅ | ❌ | ❌ | ❌ |
+| Criar/atualizar/deletar produtos | ✅ | ✅ | ✅ | ❌ |
 | Ativar/desativar gateway | ✅ | ❌ | ❌ | ❌ |
 | Alterar prioridade gateway | ✅ | ❌ | ❌ | ❌ |
 | Reembolso | ✅ | ❌ | ✅ | ❌ |
 | Listar clientes/transações | ✅ | ✅ | ✅ | ✅ |
+
+---
+
+## 🔒 Segurança
+
+- Senhas armazenadas com hash via `scrypt`
+- Autenticação via Access Tokens (Bearer)
+- Dados sensíveis de cartão: apenas os 4 últimos dígitos são armazenados
+- Validação de dados em todas as rotas com VineJS
